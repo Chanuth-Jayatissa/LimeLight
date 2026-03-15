@@ -47,11 +47,25 @@ export default function StartupCard({ startup }: { startup: StartupData; key?: R
       if (isPlaying) {
         audioRef.current.pause();
         videoRef.current.pause();
+        setIsPlaying(false);
       } else {
-        audioRef.current.play();
-        videoRef.current.play();
+        setIsPlaying(true);
+        const audioPromise = audioRef.current.play();
+        const videoPromise = videoRef.current.play();
+        
+        if (audioPromise !== undefined) {
+          audioPromise.catch(error => {
+            console.error("Audio playback failed:", error);
+            setIsPlaying(false);
+          });
+        }
+        if (videoPromise !== undefined) {
+          videoPromise.catch(error => {
+            console.error("Video playback failed:", error);
+            setIsPlaying(false);
+          });
+        }
       }
-      setIsPlaying(!isPlaying);
     }
   };
 
@@ -90,12 +104,11 @@ export default function StartupCard({ startup }: { startup: StartupData; key?: R
           loop 
           muted 
           playsInline 
+          src={startup.videoUrl || undefined}
           className={`w-full h-full object-cover transition-all duration-700 ${
             isPlaying ? 'opacity-100 scale-105' : 'opacity-40 group-hover:opacity-50 scale-100'
           }`}
-        >
-           <source src={startup.videoUrl} type="video/mp4" />
-        </video>
+        />
         <div className={`absolute inset-0 transition-opacity duration-700 pointer-events-none ${
           isPlaying 
             ? 'bg-gradient-to-t from-zinc-950 via-transparent to-transparent opacity-60' 
@@ -105,7 +118,7 @@ export default function StartupCard({ startup }: { startup: StartupData; key?: R
         {/* Audio Element */}
         <audio 
           ref={audioRef} 
-          src={startup.audioUrl} 
+          src={startup.audioUrl || undefined} 
           onEnded={handleEnded} 
           onTimeUpdate={handleTimeUpdate}
         />
