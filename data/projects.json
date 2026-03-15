@@ -1,0 +1,49 @@
+{
+  "projects": [
+    {
+      "id": 1,
+      "name": "Draftt AI",
+      "description": "Video Editting",
+      "github": "https://github.com/example/draftt",
+      "supply": 100000,
+      "initial_price": 0.01,
+      "curve_type": "linear",
+      "price_increment": 1e-05,
+      "k": null,
+      "tokens_sold": 100,
+      "treasury_balance": 1.025,
+      "active": false,
+      "stake_deposited": false,
+      "mint_address": "3qULpH9dR6v1QyELXL6eBi93jdNP4gXCabk7FLZdLnA1",
+      "token_name": "Draftt AI Token",
+      "token_symbol": "DRAFT",
+      "token_uri": "https://gateway.pinata.cloud/ipfs/Qmd6jpbd5vmoJZUeNdpARu5MJg98D2ewEahkT43yHDaxXS",
+      "token_description": "Video Editting",
+      "token_image": "https://draffted.netlify.app/drafft-icon.svg",
+      "token_external_url": "https://drafft.tech"
+    },
+    {
+      "id": 2,
+      "name": "ChanuthJayatissa",
+      "description": "Showcasing my Projects",
+      "github": "https://github.com/Chanuth-Jayatissa",
+      "supply": 100000,
+      "initial_price": 0.01,
+      "curve_type": "linear",
+      "price_increment": 0.0001,
+      "k": null,
+      "tokens_sold": 11150,
+      "treasury_balance": 1274.25,
+      "active": false,
+      "stake_deposited": false,
+      "mint_address": "E459P1McNciCbVfhacFWnhC4eW4dhihpC33Rr6pwrMfN",
+      "token_name": "Chanuth Jayatissa",
+      "token_symbol": "CJ",
+      "token_uri": "https://gateway.pinata.cloud/ipfs/QmZK4h9GdUsNKBQYm1arZ2D3y11zR91X4aM5vQKKYJQv1N",
+      "token_description": "Chanuth Jayatissa",
+      "token_image": "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/68f959374780ff4ca3db868d/dd067a5df_logo.png",
+      "token_external_url": "https://chanuthjayatissa.com"
+    }
+  ],
+  "next_id": 4
+}

@@ -1,0 +1,11 @@
+# Env and secrets (copy .env.example to .env)
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
