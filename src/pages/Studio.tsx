@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Link as LinkIcon, FileText, Loader2, CheckCircle2, Wand2, Coins, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Link as LinkIcon, FileText, Loader2, CheckCircle2, Wand2, Coins, ExternalLink, Mic, Square } from 'lucide-react';
 import StartupCard, { StartupData } from '../components/StartupCard';
 
 const mockUserStartups: StartupData[] = [
@@ -37,7 +37,8 @@ export default function Studio() {
   
   // Create State
   const [urlInput, setUrlInput] = useState('');
-  const [generationState, setGenerationState] = useState<'idle' | 'generating' | 'done'>('idle');
+  const [createStep, setCreateStep] = useState<'idle' | 'voice' | 'generating' | 'done'>('idle');
+  const [isRecording, setIsRecording] = useState(false);
   const [loadingZones, setLoadingZones] = useState({ text: true, audio: true, video: true });
   
   const [generatedData, setGeneratedData] = useState<Partial<StartupData>>({});
@@ -50,10 +51,15 @@ export default function Studio() {
   const [mintSuccess, setMintSuccess] = useState(false);
   const [txHash, setTxHash] = useState('');
 
-  const handleGenerate = () => {
+  useEffect(() => {
+    if (createStep === 'generating' && !loadingZones.text && !loadingZones.audio && !loadingZones.video) {
+      setCreateStep('done');
+    }
+  }, [createStep, loadingZones]);
+
+  const handleInitialize = () => {
     if (!urlInput) return;
-    
-    setGenerationState('generating');
+    setCreateStep('voice');
     setLoadingZones({ text: true, audio: true, video: true });
     setGeneratedData({
       id: 'new-startup',
@@ -83,7 +89,7 @@ export default function Studio() {
       ]
     });
 
-    // Zone 1: Text (2s)
+    // Zone 1: Text (Starts immediately in background, takes ~3s)
     setTimeout(() => {
       setLoadingZones(prev => ({ ...prev, text: false }));
       setGeneratedData(prev => ({
@@ -94,9 +100,31 @@ export default function Studio() {
         problem: 'Cloud costs are spiraling out of control due to inefficient resource allocation.',
         solution: 'An AI-driven orchestrator that predicts load and scales infrastructure in real-time, saving 40% on AWS bills.',
       }));
-    }, 2000);
+    }, 3000);
 
-    // Zone 2: Audio (4s)
+    // Zone 3: Video (Starts immediately in background, takes ~6s)
+    setTimeout(() => {
+      setLoadingZones(prev => ({ ...prev, video: false }));
+      setGeneratedData(prev => ({
+        ...prev,
+        videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+      }));
+    }, 6000);
+  };
+
+  const toggleRecording = () => {
+    if (isRecording) {
+      setIsRecording(false);
+      handleGenerate();
+    } else {
+      setIsRecording(true);
+    }
+  };
+
+  const handleGenerate = () => {
+    setCreateStep('generating');
+    
+    // Zone 2: Audio (Starts after recording stops, takes ~4s)
     setTimeout(() => {
       setLoadingZones(prev => ({ ...prev, audio: false }));
       setGeneratedData(prev => ({
@@ -104,16 +132,6 @@ export default function Studio() {
         audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
       }));
     }, 4000);
-
-    // Zone 3: Video (6s)
-    setTimeout(() => {
-      setLoadingZones(prev => ({ ...prev, video: false }));
-      setGeneratedData(prev => ({
-        ...prev,
-        videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
-      }));
-      setGenerationState('done');
-    }, 6000);
   };
 
   const handleMint = async () => {
@@ -141,11 +159,12 @@ export default function Studio() {
     }
     setStartups([newStartup, ...startups]);
     setView('dashboard');
-    setGenerationState('idle');
+    setCreateStep('idle');
     setGeneratedData({});
     setTxHash('');
     setMintSuccess(false);
     setUrlInput('');
+    setLoadingZones({ text: true, audio: true, video: true });
   };
 
   return (
@@ -207,7 +226,7 @@ export default function Studio() {
             <p className="text-zinc-400">Provide a source and let our AI agents generate your pitch, audio, and video.</p>
           </div>
 
-          {generationState === 'idle' && (
+          {createStep === 'idle' && (
             <div className="grid md:grid-cols-2 gap-6">
               <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 space-y-4">
                 <div className="w-12 h-12 bg-emerald-500/10 rounded-xl flex items-center justify-center mb-4">
@@ -223,11 +242,11 @@ export default function Studio() {
                   className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 text-white placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                 />
                 <button 
-                  onClick={handleGenerate}
+                  onClick={handleInitialize}
                   disabled={!urlInput}
                   className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:bg-zinc-800 disabled:text-zinc-500 text-zinc-950 font-bold py-3 rounded-xl transition-colors"
                 >
-                  Generate
+                  Initialize Startup
                 </button>
               </div>
 
@@ -248,8 +267,51 @@ export default function Studio() {
             </div>
           )}
 
-          {generationState !== 'idle' && (
-            <div className="space-y-8">
+          {createStep === 'voice' && (
+            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 space-y-8 animate-in slide-in-from-right-8 duration-500">
+              <div className="text-center space-y-2">
+                <h3 className="text-2xl font-bold text-white">Voice Studio</h3>
+                <p className="text-zinc-400">Read the manifesto below to clone your voice for the pitch.</p>
+              </div>
+
+              <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-8 relative">
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-zinc-800 text-zinc-300 text-xs font-bold px-4 py-1 rounded-full uppercase tracking-widest">
+                  Teleprompter
+                </div>
+                <p className="text-xl leading-relaxed text-zinc-300 font-medium text-center">
+                  "We believe in a future where technology empowers everyone. Our mission is to build tools that are not only powerful but accessible. We are creating a platform that bridges the gap between complex infrastructure and intuitive design. By leveraging the latest advancements in artificial intelligence, we are automating the mundane and unlocking human creativity. Our vision is a world where anyone can turn their ideas into reality without being hindered by technical barriers. We are committed to open standards, community-driven development, and relentless innovation. Join us on this journey to reshape the digital landscape. Together, we can build a more connected, efficient, and inspiring future for all."
+                </p>
+              </div>
+
+              <div className="flex justify-center">
+                <button
+                  onClick={toggleRecording}
+                  className={`relative group flex items-center justify-center w-24 h-24 rounded-full transition-all duration-300 ${
+                    isRecording 
+                      ? 'bg-rose-500/20 hover:bg-rose-500/30 border-2 border-rose-500' 
+                      : 'bg-emerald-500 hover:bg-emerald-400 shadow-[0_0_30px_rgba(16,185,129,0.3)] hover:shadow-[0_0_40px_rgba(16,185,129,0.5)]'
+                  }`}
+                >
+                  {isRecording && (
+                    <div className="absolute inset-0 rounded-full border-4 border-rose-500 animate-ping opacity-20" />
+                  )}
+                  {isRecording ? (
+                    <Square className="w-8 h-8 text-rose-500 fill-rose-500" />
+                  ) : (
+                    <Mic className="w-10 h-10 text-zinc-950" />
+                  )}
+                </button>
+              </div>
+              <div className="text-center">
+                <p className={`text-sm font-medium ${isRecording ? 'text-rose-400 animate-pulse' : 'text-zinc-500'}`}>
+                  {isRecording ? 'Recording... Click to stop' : 'Click to start recording'}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {(createStep === 'generating' || createStep === 'done') && (
+            <div className="space-y-8 animate-in fade-in duration-500">
               {/* Progressive Loading Indicators */}
               <div className="grid md:grid-cols-3 gap-4">
                 <div className={`p-4 rounded-xl border flex items-center gap-3 transition-colors ${loadingZones.text ? 'bg-zinc-900 border-zinc-800' : 'bg-emerald-500/10 border-emerald-500/30'}`}>
@@ -282,7 +344,7 @@ export default function Studio() {
               </div>
 
               {/* Actions */}
-              {generationState === 'done' && (
+              {createStep === 'done' && (
                 <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-zinc-800">
                   <button 
                     onClick={() => setShowTokenModal(true)}
