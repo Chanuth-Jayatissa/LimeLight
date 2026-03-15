@@ -132,14 +132,24 @@ def _get_project(project_id: int) -> dict[str, Any]:
 
 @app.get("/projects")
 def list_projects() -> list[dict[str, Any]]:
-    """List all projects."""
-    return state.list_projects()
+    """List all projects. Each project includes mint_explorer_url and vault_owner_explorer_url when present."""
+    return [_add_explorer_urls(p) for p in state.list_projects()]
+
+
+def _add_explorer_urls(project: dict[str, Any]) -> dict[str, Any]:
+    """Add mint_explorer_url and vault_owner_explorer_url (Devnet) to project dict."""
+    out = dict(project)
+    if out.get("mint_address"):
+        out["mint_explorer_url"] = get_devnet_mint_url(out["mint_address"])
+    if out.get("vault_owner"):
+        out["vault_owner_explorer_url"] = get_devnet_mint_url(out["vault_owner"])
+    return out
 
 
 @app.get("/projects/{project_id}")
 def get_project(project_id: int) -> dict[str, Any]:
-    """Get a single project by ID."""
-    return _get_project(project_id)
+    """Get a single project by ID. Includes mint_explorer_url and vault_owner_explorer_url when present."""
+    return _add_explorer_urls(_get_project(project_id))
 
 
 @app.post("/projects")
@@ -243,7 +253,7 @@ def create_project(body: CreateProjectRequest) -> dict[str, Any]:
             set_project_token_metadata(pid, token_name=name, token_symbol=symbol, token_uri=uri)
         project = state.get_project(pid) or project
 
-    return state.get_project(pid) or project
+    return _add_explorer_urls(state.get_project(pid) or project)
 
 
 @app.delete("/projects/{project_id}")

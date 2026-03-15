@@ -193,6 +193,14 @@ curl -X POST http://localhost:8000/projects \
 
 Required env: `PINATA_JWT` (for IPFS), `PLATFORM_KEYPAIR_PATH` or `PLATFORM_KEYPAIR_BASE64` (for create_mint). The uploaded JSON includes: `name`, `symbol`, `description`, `image`, `external_url`.
 
+**Copy-paste ready (single line):**
+
+```bash
+curl -X POST http://localhost:8000/projects -H "Content-Type: application/json" -d '{"name":"My Token","description":"Project description","supply":100000,"create_mint":true,"upload_to_ipfs":true,"token_name":"My Token","token_symbol":"MTK","token_description":"Full token description","token_image":"https://example.com/icon.png","token_external_url":"https://my-token.com","vault_owner":"YOUR_PHANTOM_ADDRESS"}'
+```
+
+Replace `localhost:8000` with your server (e.g. `18.224.183.185:8000`) and `YOUR_PHANTOM_ADDRESS` with the creator's wallet.
+
 ---
 
 ### DELETE /projects/{project_id}
