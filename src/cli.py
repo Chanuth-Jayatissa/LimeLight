@@ -663,11 +663,11 @@ def gui() -> None:
 
 @app.command()
 def serve(
-    host: str = typer.Option("0.0.0.0", "--host", "-h", help="Bind host"),
+    host: str = typer.Option("0.0.0.0", "--host", "-h", help="Bind host (0.0.0.0 = all network adapters, 127.0.0.1 = localhost only)"),
     port: int = typer.Option(8000, "--port", "-p", help="Bind port"),
     reload: bool = typer.Option(False, "--reload", help="Reload on code change (development)"),
 ) -> None:
-    """Run the FastAPI server for your frontend. API docs at http://<host>:<port>/docs."""
+    """Run the FastAPI server for your frontend. Default 0.0.0.0 so the API is reachable from other devices on your network. API docs at http://<host>:<port>/docs."""
     import uvicorn
     uvicorn.run("src.api:app", host=host, port=port, reload=reload)
 
