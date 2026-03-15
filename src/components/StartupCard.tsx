@@ -11,7 +11,6 @@ export interface StartupData {
   hook: string;
   problem: string;
   solution: string;
-  videoUrl: string;
   audioUrl: string;
   websiteUrl: string;
   tokenPrice: number;
@@ -31,13 +30,12 @@ export default function StartupCard({ startup }: { startup: StartupData; key?: R
   const [isExpanded, setIsExpanded] = useState(false);
   const [progress, setProgress] = useState(0);
   
-  const audioRef = useRef<HTMLAudioElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const handleTimeUpdate = () => {
-    if (audioRef.current) {
-      const current = audioRef.current.currentTime;
-      const duration = audioRef.current.duration;
+    if (videoRef.current) {
+      const current = videoRef.current.currentTime;
+      const duration = videoRef.current.duration;
       if (duration > 0) {
         setProgress((current / duration) * 100);
       }
@@ -48,31 +46,23 @@ export default function StartupCard({ startup }: { startup: StartupData; key?: R
     e?.stopPropagation();
     
     if (isPlaying) {
-      if (audioRef.current) audioRef.current.pause();
       if (videoRef.current) videoRef.current.pause();
       setIsPlaying(false);
     } else {
       setIsPlaying(true);
       let hasMedia = false;
       
-      if (audioRef.current && startup.audioUrl) {
-        hasMedia = true;
-        const audioPromise = audioRef.current.play();
-        if (audioPromise !== undefined) {
-          audioPromise.catch(error => {
-            console.error("Audio playback failed:", error);
-          });
-        }
-      }
-      
-      if (videoRef.current && startup.videoUrl) {
+      if (videoRef.current && startup.audioUrl) {
         hasMedia = true;
         const videoPromise = videoRef.current.play();
         if (videoPromise !== undefined) {
           videoPromise.catch(error => {
             console.error("Video playback failed:", error);
+            setIsPlaying(false);
           });
         }
+      } else {
+        console.warn("No video URL available to play.");
       }
       
       if (!hasMedia) {
@@ -84,10 +74,6 @@ export default function StartupCard({ startup }: { startup: StartupData; key?: R
   const handleEnded = () => {
     setIsPlaying(false);
     setProgress(0);
-    if (videoRef.current) {
-      videoRef.current.pause();
-      videoRef.current.currentTime = 0;
-    }
   };
 
   const handleTrade = async (type: 'buy' | 'sell') => {
@@ -110,37 +96,42 @@ export default function StartupCard({ startup }: { startup: StartupData; key?: R
 
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col">
-      {/* Immersive Audio & Video Player (Top section) */}
+      {/* Immersive Audio Player (Top section) */}
       <div 
-        className="relative h-72 w-full bg-zinc-950 group cursor-pointer overflow-hidden"
+        className="relative h-64 w-full bg-zinc-950 group cursor-pointer overflow-hidden flex flex-col justify-end"
         onClick={toggleAudio}
       >
-        <video 
-          ref={videoRef}
-          loop 
-          muted 
-          playsInline 
-          src={startup.videoUrl || undefined}
-          className={`w-full h-full object-cover transition-all duration-700 ${
-            isPlaying ? 'opacity-100 scale-105' : 'opacity-40 group-hover:opacity-50 scale-100'
-          }`}
-        />
-        <div className={`absolute inset-0 transition-opacity duration-700 pointer-events-none ${
-          isPlaying 
-            ? 'bg-gradient-to-t from-zinc-950 via-transparent to-transparent opacity-60' 
-            : 'bg-gradient-to-t from-zinc-900 via-zinc-900/40 to-transparent opacity-100'
-        }`} />
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-emerald-500/20 via-zinc-950 to-zinc-950" />
+        
+        {/* Audio Waveform Visualization Placeholder */}
+        <div className={`absolute inset-0 flex items-center justify-center gap-1 transition-opacity duration-700 ${isPlaying ? 'opacity-30' : 'opacity-10'}`}>
+          {[...Array(20)].map((_, i) => (
+            <div 
+              key={i} 
+              className="w-2 bg-emerald-500 rounded-full"
+              style={{ 
+                height: isPlaying ? `${Math.max(20, Math.random() * 100)}%` : '20%',
+                transition: 'height 0.2s ease'
+              }}
+            />
+          ))}
+        </div>
 
-        {/* Audio Element */}
-        <audio 
-          ref={audioRef} 
+        <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-900/40 to-transparent opacity-100 pointer-events-none" />
+
+        {/* Video Element */}
+        <video 
+          ref={videoRef} 
           src={startup.audioUrl || undefined} 
           onEnded={handleEnded} 
           onTimeUpdate={handleTimeUpdate}
+          className="absolute inset-0 w-full h-full object-cover opacity-50"
+          playsInline
         />
 
         {/* Header Overlay */}
-        <div className={`absolute top-6 left-6 right-6 flex justify-between items-start z-10 transition-opacity duration-500 ${isPlaying ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}`}>
+        <div className="absolute top-6 left-6 right-6 flex justify-between items-start z-10">
            <div className="flex items-center gap-4">
              <div className="w-12 h-12 bg-zinc-950 border border-zinc-800 rounded-xl flex items-center justify-center font-bold text-2xl text-emerald-400 shadow-lg">
                {startup.logo}

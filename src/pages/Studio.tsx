@@ -13,7 +13,6 @@ const mockUserStartups: StartupData[] = [
     hook: 'The best AI ever created.',
     problem: 'Things are too slow.',
     solution: 'Make them fast with AI.',
-    videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
     audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
     websiteUrl: 'https://example.com',
     tokenPrice: 0.0015,
@@ -52,7 +51,7 @@ export default function Studio() {
   const [urlInput, setUrlInput] = useState('');
   const [createStep, setCreateStep] = useState<'idle' | 'voice' | 'generating' | 'done'>('idle');
   const [isRecording, setIsRecording] = useState(false);
-  const [loadingZones, setLoadingZones] = useState({ text: true, audio: true, video: true });
+  const [loadingZones, setLoadingZones] = useState({ text: true, audio: true });
   const [voiceStatus, setVoiceStatus] = useState<string>('');
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -69,7 +68,7 @@ export default function Studio() {
   const [txHash, setTxHash] = useState('');
 
   useEffect(() => {
-    if (createStep === 'generating' && !loadingZones.text && !loadingZones.audio && !loadingZones.video) {
+    if (createStep === 'generating' && !loadingZones.text && !loadingZones.audio) {
       setCreateStep('done');
     }
   }, [createStep, loadingZones]);
@@ -87,7 +86,7 @@ export default function Studio() {
     });
   };
 
-  const processVoicePipeline = async (file: File, targetUrl: string) => {
+  const processVoicePipeline = async (file: File, targetUrl: string, startupName: string) => {
     try {
       const session = await fetchAuthSession();
       const token = session.tokens?.idToken?.toString() || session.tokens?.accessToken?.toString();
@@ -102,7 +101,7 @@ export default function Studio() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ audio_base64: base64Audio, name: 'Founder' })
+        body: JSON.stringify({ audio_base64: base64Audio, name: startupName })
       });
       
       if (!voiceRes.ok) {
@@ -171,7 +170,7 @@ export default function Studio() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ text: pitchText, voice_id: voiceId, name: 'Founder' })
+        body: JSON.stringify({ text: pitchText, voice_id: voiceId, name: startupName })
       });
       
       if (!ttsRes.ok) {
@@ -190,7 +189,40 @@ export default function Studio() {
         }
       }
       
-      const audioUrl = ttsData.s3_url || ttsData.audio_url;
+      let audioUrl = ttsData.s3_url || ttsData.audio_url;
+
+      setVoiceStatus('Fetching audio URL...');
+      try {
+        const targetFileName = `${startupName}_pitch.mp3`;
+        const audioRes = await fetch(`/api/getPresignedGetItems?name=${encodeURIComponent(targetFileName)}`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ 
+            name: targetFileName
+          })
+        });
+        
+        if (audioRes.ok) {
+          let audioData = await audioRes.json();
+          if (audioData.body && typeof audioData.body === 'string') {
+            try {
+              audioData = JSON.parse(audioData.body);
+            } catch (e) {
+              console.error('Failed to parse audioData.body', e);
+            }
+          }
+          if (audioData.getURL || audioData.url || audioData.presigned_url) {
+            audioUrl = audioData.getURL || audioData.url || audioData.presigned_url;
+          }
+        } else {
+          console.error('Failed to fetch audio URL:', await audioRes.text());
+        }
+      } catch (err) {
+        console.error('Error fetching audio URL:', err);
+      }
 
       setVoiceStatus('Cleaning up...');
       // 4. Delete Voice
@@ -223,7 +255,7 @@ export default function Studio() {
   const handleInitialize = async () => {
     if (!urlInput) return;
     setCreateStep('voice');
-    setLoadingZones({ text: true, audio: true, video: true });
+    setLoadingZones({ text: true, audio: true });
     setGeneratedData({
       id: 'new-startup',
       name: 'Generating...',
@@ -233,7 +265,6 @@ export default function Studio() {
       hook: '...',
       problem: '...',
       solution: '...',
-      videoUrl: '',
       audioUrl: '',
       websiteUrl: urlInput,
       tokenPrice: 0.001,
@@ -329,14 +360,7 @@ export default function Studio() {
       }));
     }
 
-    // Zone 3: Video (Starts immediately in background, takes ~6s)
-    setTimeout(() => {
-      setLoadingZones(prev => ({ ...prev, video: false }));
-      setGeneratedData(prev => ({
-        ...prev,
-        videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
-      }));
-    }, 6000);
+    // Zone 3: Video (Removed)
   };
 
   const startRecording = async () => {
@@ -388,6 +412,7 @@ export default function Studio() {
     setCreateStep('generating');
     
     const fileToProcess = recordedFile || audioFile;
+    const startupName = generatedData.name || 'Unknown Startup';
     
     if (!fileToProcess) {
       // Fallback if no audio recorded
@@ -400,13 +425,13 @@ export default function Studio() {
       }, 4000);
     } else {
       // Process the actual voice pipeline
-      const generatedAudioUrl = await processVoicePipeline(fileToProcess, urlInput);
+      const pipelineResult = await processVoicePipeline(fileToProcess, urlInput, startupName);
       
       setLoadingZones(prev => ({ ...prev, audio: false }));
-      if (generatedAudioUrl) {
+      if (pipelineResult) {
         setGeneratedData(prev => ({
           ...prev,
-          audioUrl: generatedAudioUrl,
+          audioUrl: pipelineResult,
         }));
       } else {
         // Fallback on error
@@ -459,7 +484,7 @@ export default function Studio() {
     setTxHash('');
     setMintSuccess(false);
     setUrlInput('');
-    setLoadingZones({ text: true, audio: true, video: true });
+    setLoadingZones({ text: true, audio: true });
   };
 
   return (
@@ -608,7 +633,7 @@ export default function Studio() {
           {(createStep === 'generating' || createStep === 'done') && (
             <div className="space-y-8 animate-in fade-in duration-500">
               {/* Progressive Loading Indicators */}
-              <div className="grid md:grid-cols-3 gap-4">
+              <div className="grid md:grid-cols-2 gap-4">
                 <div className={`p-4 rounded-xl border flex items-center gap-3 transition-colors ${loadingZones.text ? 'bg-zinc-900 border-zinc-800' : 'bg-emerald-500/10 border-emerald-500/30'}`}>
                   {loadingZones.text ? <Loader2 className="w-5 h-5 text-emerald-400 animate-spin" /> : <CheckCircle2 className="w-5 h-5 text-emerald-400" />}
                   <div>
@@ -621,13 +646,6 @@ export default function Studio() {
                   <div>
                     <p className="text-sm font-medium text-white">Audio Pitch</p>
                     <p className="text-xs text-zinc-400">{loadingZones.audio ? (voiceStatus || 'Cloning Voice & Generating...') : 'Audio Ready'}</p>
-                  </div>
-                </div>
-                <div className={`p-4 rounded-xl border flex items-center gap-3 transition-colors ${loadingZones.video ? 'bg-zinc-900 border-zinc-800' : 'bg-emerald-500/10 border-emerald-500/30'}`}>
-                  {loadingZones.video ? <Loader2 className="w-5 h-5 text-emerald-400 animate-spin" /> : <CheckCircle2 className="w-5 h-5 text-emerald-400" />}
-                  <div>
-                    <p className="text-sm font-medium text-white">Cinematic Video</p>
-                    <p className="text-xs text-zinc-400">{loadingZones.video ? 'Rendering B-Roll...' : 'Video Rendered'}</p>
                   </div>
                 </div>
               </div>
