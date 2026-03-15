@@ -16,6 +16,8 @@ const mockStartups: StartupData[] = [
     websiteUrl: 'https://example.com/nexus',
     tokenPrice: 0.0042,
     marketCap: 1250000,
+    tokenAddress: 'TokenNEXUS111111111111111111111111111111111',
+    tokenSymbol: 'NEXUS',
     radarData: [
       { subject: 'Team', score: 85 },
       { subject: 'Tech', score: 95 },
@@ -86,6 +88,8 @@ const mockStartups: StartupData[] = [
     websiteUrl: 'https://example.com/voxel',
     tokenPrice: 0.0021,
     marketCap: 850000,
+    tokenAddress: 'TokenVOXEL111111111111111111111111111111111',
+    tokenSymbol: 'VOXEL',
     radarData: [
       { subject: 'Team', score: 75 },
       { subject: 'Tech', score: 98 },
@@ -121,6 +125,8 @@ const mockStartups: StartupData[] = [
     websiteUrl: 'https://example.com/synthetix',
     tokenPrice: 0.0540,
     marketCap: 12400000,
+    tokenAddress: 'TokenSYNTH111111111111111111111111111111111',
+    tokenSymbol: 'SYNTH',
     radarData: [
       { subject: 'Team', score: 95 },
       { subject: 'Tech', score: 90 },
@@ -216,6 +222,25 @@ const mockStartups: StartupData[] = [
 
 export default function Discover() {
   const [columns, setColumns] = useState(3);
+  const [allStartups, setAllStartups] = useState<StartupData[]>(mockStartups);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('userStartups');
+    if (saved) {
+      try {
+        const userStartups = JSON.parse(saved);
+        // Filter for published startups
+        const publishedStartups = userStartups.filter((s: StartupData) => 
+          s.status === 'Published' || s.status === 'Live Token' || s.status === 'Live Curve'
+        );
+        
+        // Combine published user startups with mock startups
+        setAllStartups([...publishedStartups, ...mockStartups]);
+      } catch (e) {
+        console.error('Failed to parse user startups', e);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const handleResize = () => {
@@ -235,7 +260,7 @@ export default function Discover() {
 
   // Distribute startups into columns to create a true masonry layout
   const colArrays: StartupData[][] = Array.from({ length: columns }, () => []);
-  mockStartups.forEach((startup, index) => {
+  allStartups.forEach((startup, index) => {
     colArrays[index % columns].push(startup);
   });
 

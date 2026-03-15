@@ -18,6 +18,8 @@ export interface StartupData {
   marketCap: number;
   radarData: { subject: string; score: number }[];
   lineData: { month: string; users: number }[];
+  tokenAddress?: string;
+  tokenSymbol?: string;
 }
 
 export default function StartupCard({ startup }: { startup: StartupData; key?: React.Key }) {
@@ -25,6 +27,7 @@ export default function StartupCard({ startup }: { startup: StartupData; key?: R
   const [amount, setAmount] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [tradeType, setTradeType] = useState<'buy' | 'sell' | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [progress, setProgress] = useState(0);
   
@@ -87,8 +90,9 @@ export default function StartupCard({ startup }: { startup: StartupData; key?: R
     }
   };
 
-  const handleInvest = async () => {
+  const handleTrade = async (type: 'buy' | 'sell') => {
     if (!amount || isNaN(Number(amount))) return;
+    setTradeType(type);
     setIsProcessing(true);
     
     // Simulate Web3 transaction on Solana
@@ -98,7 +102,10 @@ export default function StartupCard({ startup }: { startup: StartupData; key?: R
     setIsSuccess(true);
     setAmount('');
     
-    setTimeout(() => setIsSuccess(false), 3000);
+    setTimeout(() => {
+      setIsSuccess(false);
+      setTradeType(null);
+    }, 3000);
   };
 
   return (
@@ -231,9 +238,9 @@ export default function StartupCard({ startup }: { startup: StartupData; key?: R
             className="flex-1 py-3 flex items-center justify-center gap-2 text-zinc-400 hover:text-white hover:bg-zinc-800/50 rounded-xl transition-colors text-sm font-medium border border-transparent hover:border-zinc-700/50"
           >
             {isExpanded ? (
-              <>Hide Analysis & Invest <ChevronUp className="w-4 h-4" /></>
+              <>Hide Analysis {startup.tokenAddress && '& Invest'} <ChevronUp className="w-4 h-4" /></>
             ) : (
-              <>View Analysis & Invest <ChevronDown className="w-4 h-4" /></>
+              <>View Analysis {startup.tokenAddress && '& Invest'} <ChevronDown className="w-4 h-4" /></>
             )}
           </button>
         </div>
@@ -274,54 +281,88 @@ export default function StartupCard({ startup }: { startup: StartupData; key?: R
         </div>
 
         {/* Web3 Investment Interface */}
-        <div className="border-t border-zinc-800 pt-8 mt-auto">
-          <div className="flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-4 mb-6">
-            <div>
-              <p className="text-sm text-zinc-400 mb-1">Current Token Price</p>
-              <p className="text-3xl font-mono font-semibold text-white">${startup.tokenPrice.toFixed(4)}</p>
+        {startup.tokenAddress && (
+          <div className="border-t border-zinc-800 pt-8 mt-auto">
+            <div className="mb-6">
+              <a 
+                href={`https://explorer.solana.com/address/${startup.tokenAddress}?cluster=devnet`} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-sm text-emerald-500 hover:text-emerald-400 transition-colors bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20"
+              >
+                View {startup.tokenSymbol || 'Token'} on Solana Explorer <ExternalLink className="w-3.5 h-3.5" />
+              </a>
             </div>
-            <div className="2xl:text-right">
-              <p className="text-sm text-zinc-400 mb-1">Bonding Curve Market Cap</p>
-              <p className="text-2xl font-mono font-medium text-emerald-500">${startup.marketCap.toLocaleString()}</p>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-4">
-            <div className="relative flex-1">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <span className="text-zinc-500 font-mono font-medium">SOL</span>
+            
+            <div className="flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-4 mb-6">
+              <div>
+                <p className="text-sm text-zinc-400 mb-1">Current Token Price</p>
+                <p className="text-3xl font-mono font-semibold text-white">${startup.tokenPrice.toFixed(4)}</p>
               </div>
-              <input
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="0.00"
-                step="0.1"
-                min="0"
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-4 pl-14 pr-4 text-white placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 font-mono text-lg transition-all"
-              />
+              <div className="2xl:text-right">
+                <p className="text-sm text-zinc-400 mb-1">Bonding Curve Market Cap</p>
+                <p className="text-2xl font-mono font-medium text-emerald-500">${startup.marketCap.toLocaleString()}</p>
+              </div>
             </div>
-            <button
-              onClick={handleInvest}
-              disabled={isProcessing || !amount || Number(amount) <= 0}
-              className="bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold px-10 py-4 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[180px] text-lg shadow-[0_0_20px_rgba(16,185,129,0.2)] hover:shadow-[0_0_30px_rgba(16,185,129,0.4)]"
-            >
-              {isProcessing ? (
-                <span className="flex items-center gap-3">
-                  <div className="w-5 h-5 border-2 border-zinc-950/30 border-t-zinc-950 rounded-full animate-spin" />
-                  Processing...
-                </span>
-              ) : isSuccess ? (
-                <span className="flex items-center gap-2">
-                  <CheckCircle2 className="w-6 h-6" />
-                  Success
-                </span>
-              ) : (
-                'INVEST'
-              )}
-            </button>
+
+            <div className="flex flex-col gap-4">
+              <div className="relative flex-1">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <span className="text-zinc-500 font-mono font-medium">SOL</span>
+                </div>
+                <input
+                  type="number"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="0.00"
+                  step="0.1"
+                  min="0"
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-4 pl-14 pr-4 text-white placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 font-mono text-lg transition-all"
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handleTrade('buy')}
+                  disabled={isProcessing || !amount || Number(amount) <= 0}
+                  className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold py-4 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-lg shadow-[0_0_20px_rgba(16,185,129,0.2)] hover:shadow-[0_0_30px_rgba(16,185,129,0.4)]"
+                >
+                  {isProcessing && tradeType === 'buy' ? (
+                    <span className="flex items-center gap-3">
+                      <div className="w-5 h-5 border-2 border-zinc-950/30 border-t-zinc-950 rounded-full animate-spin" />
+                      Processing...
+                    </span>
+                  ) : isSuccess && tradeType === 'buy' ? (
+                    <span className="flex items-center gap-2">
+                      <CheckCircle2 className="w-6 h-6" />
+                      Success
+                    </span>
+                  ) : (
+                    'BUY'
+                  )}
+                </button>
+                <button
+                  onClick={() => handleTrade('sell')}
+                  disabled={isProcessing || !amount || Number(amount) <= 0}
+                  className="flex-1 bg-rose-500 hover:bg-rose-400 text-white font-bold py-4 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-lg shadow-[0_0_20px_rgba(244,63,94,0.2)] hover:shadow-[0_0_30px_rgba(244,63,94,0.4)]"
+                >
+                  {isProcessing && tradeType === 'sell' ? (
+                    <span className="flex items-center gap-3">
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Processing...
+                    </span>
+                  ) : isSuccess && tradeType === 'sell' ? (
+                    <span className="flex items-center gap-2">
+                      <CheckCircle2 className="w-6 h-6" />
+                      Success
+                    </span>
+                  ) : (
+                    'SELL'
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
           </div>
         )}
       </div>

@@ -16,8 +16,10 @@ const mockUserStartups: StartupData[] = [
     videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
     audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
     websiteUrl: 'https://example.com',
-    tokenPrice: 0,
-    marketCap: 0,
+    tokenPrice: 0.0015,
+    marketCap: 150000,
+    tokenAddress: 'Token11111111111111111111111111111111111111',
+    tokenSymbol: 'AWAI',
     radarData: [
       { subject: 'Team', score: 80 },
       { subject: 'Tech', score: 90 },
@@ -34,7 +36,17 @@ const mockUserStartups: StartupData[] = [
 
 export default function Studio() {
   const [view, setView] = useState<'dashboard' | 'create'>('dashboard');
-  const [startups, setStartups] = useState<StartupData[]>(mockUserStartups);
+  const [startups, setStartups] = useState<StartupData[]>(() => {
+    const saved = localStorage.getItem('userStartups');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Failed to parse user startups', e);
+      }
+    }
+    return mockUserStartups;
+  });
   
   // Create State
   const [urlInput, setUrlInput] = useState('');
@@ -84,7 +96,7 @@ export default function Studio() {
       const base64Audio = await fileToBase64(file);
       
       // 1. Create Voice
-      const voiceRes = await fetch('https://gl8wkexgui.execute-api.us-east-2.amazonaws.com/createVoice', {
+      const voiceRes = await fetch('/api/createVoice', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -124,7 +136,7 @@ export default function Studio() {
 
       setVoiceStatus('Writing pitch...');
       // 2. Get Pitch
-      const pitchRes = await fetch('https://gl8wkexgui.execute-api.us-east-2.amazonaws.com/getPitchFromBedrock', {
+      const pitchRes = await fetch('/api/getPitchFromBedrock', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -153,7 +165,7 @@ export default function Studio() {
 
       setVoiceStatus('Synthesizing audio...');
       // 3. Generate TTS
-      const ttsRes = await fetch('https://ceexnffhr5wbwd4gny4hzo65k40zgutx.lambda-url.us-east-2.on.aws/', {
+      const ttsRes = await fetch('/tts/', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -182,7 +194,7 @@ export default function Studio() {
 
       setVoiceStatus('Cleaning up...');
       // 4. Delete Voice
-      await fetch('https://gl8wkexgui.execute-api.us-east-2.amazonaws.com/deleteVoice', {
+      await fetch('/api/deleteVoice', {
         method: 'DELETE',
         headers: { 
           'Content-Type': 'application/json',
@@ -244,7 +256,7 @@ export default function Studio() {
       const session = await fetchAuthSession();
       const token = session.tokens?.idToken?.toString() || session.tokens?.accessToken?.toString();
 
-      const response = await fetch('https://gl8wkexgui.execute-api.us-east-2.amazonaws.com/scrapeURL', {
+      const response = await fetch('/api/scrapeURL', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -417,19 +429,30 @@ export default function Studio() {
     setMintSuccess(true);
     setTxHash('5xY9...aB2c');
     
+    setGeneratedData(prev => ({
+      ...prev,
+      tokenAddress: 'Token11111111111111111111111111111111111111',
+      tokenSymbol: tokenSymbol
+    }));
+    
     setTimeout(() => {
       setShowTokenModal(false);
     }, 2000);
   };
 
   const handlePublish = () => {
-    const newStartup = { ...generatedData } as StartupData;
+    const newStartup = { 
+      ...generatedData,
+      id: `startup-${Date.now()}`
+    } as StartupData;
     if (txHash) {
       newStartup.status = 'Live Token';
     } else {
       newStartup.status = 'Published';
     }
-    setStartups([newStartup, ...startups]);
+    const updatedStartups = [newStartup, ...startups];
+    setStartups(updatedStartups);
+    localStorage.setItem('userStartups', JSON.stringify(updatedStartups));
     setView('dashboard');
     setCreateStep('idle');
     setGeneratedData({});
@@ -618,13 +641,15 @@ export default function Studio() {
               {/* Actions */}
               {createStep === 'done' && (
                 <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-zinc-800">
-                  <button 
-                    onClick={() => setShowTokenModal(true)}
-                    className="flex-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors"
-                  >
-                    <Coins className="w-5 h-5 text-yellow-400" />
-                    Generate Token for Startup
-                  </button>
+                  {!generatedData.tokenAddress && (
+                    <button 
+                      onClick={() => setShowTokenModal(true)}
+                      className="flex-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors"
+                    >
+                      <Coins className="w-5 h-5 text-yellow-400" />
+                      Generate Token for Startup
+                    </button>
+                  )}
                   <button 
                     onClick={handlePublish}
                     className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 py-4 rounded-xl font-bold transition-colors shadow-[0_0_20px_rgba(16,185,129,0.2)]"
