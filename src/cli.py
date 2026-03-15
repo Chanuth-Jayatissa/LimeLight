@@ -667,8 +667,11 @@ def serve(
     port: int = typer.Option(8000, "--port", "-p", help="Bind port"),
     reload: bool = typer.Option(False, "--reload", help="Reload on code change (development)"),
 ) -> None:
-    """Run the FastAPI server for your frontend. Default 0.0.0.0 so the API is reachable from other devices on your network. API docs at http://<host>:<port>/docs."""
+    """Run the FastAPI server for your frontend. Default 0.0.0.0 so the API is reachable from other devices and via public IP (e.g. on AWS). API docs at http://<host>:<port>/docs."""
     import uvicorn
+    if host == "0.0.0.0":
+        console.print("[dim]Listening on all interfaces (0.0.0.0). On AWS/cloud, use the instance public IPv4 and open the port in the security group.[/dim]")
+    console.print(f"[green]API:[/green] http://{host}:{port}  [dim]Docs:[/dim] http://{host}:{port}/docs")
     uvicorn.run("src.api:app", host=host, port=port, reload=reload)
 
 

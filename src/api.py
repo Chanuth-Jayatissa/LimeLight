@@ -197,6 +197,7 @@ def create_project(body: CreateProjectRequest) -> dict[str, Any]:
     if body.upload_to_ipfs and not body.token_uri:
         try:
             data_dir = Path(state.STATE_FILE).parent
+            # Upload full metadata JSON to IPFS: name, symbol, description, image, external_url (all from request)
             meta_path = write_metadata_json(
                 data_dir / f"metadata_{pid}.json",
                 name=t_name,

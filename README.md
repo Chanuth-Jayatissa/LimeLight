@@ -33,6 +33,8 @@ startup-cli --help
 python -m src.cli --help
 ```
 
+**Solana setup (keypairs, Devnet, API):** See **[SETUP_SOLANA.md](SETUP_SOLANA.md)** for step-by-step instructions (keypair, Devnet SOL, `PLATFORM_KEYPAIR`, vault owner, and optional Phantom).
+
 ### GUI (view price and run all features)
 
 To see the **current trading price** of minted tokens and run Create project, Create mint, Buy, and Sell from one window:

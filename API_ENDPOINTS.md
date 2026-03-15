@@ -168,6 +168,33 @@ The platform still pays for and creates the mint; the pre-minted supply is sent 
 
 ---
 
+**Create project with mint and upload all metadata to IPFS**
+
+Set `upload_to_ipfs: true` and include all token metadata fields. The server builds a Metaplex-style JSON (name, symbol, description, image, external_url), uploads it to IPFS (requires `PINATA_JWT` in env), sets `token_uri` on the project, then creates the mint with that URI so wallets show name, icon, and description. Omit `token_uri` so the server uploads.
+
+```bash
+curl -X POST http://localhost:8000/projects \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "My Token",
+    "description": "Project description",
+    "github": "https://github.com/example/my-token",
+    "supply": 100000,
+    "create_mint": true,
+    "upload_to_ipfs": true,
+    "token_name": "My Token",
+    "token_symbol": "MTK",
+    "token_description": "Full token description for wallets and explorers",
+    "token_image": "https://example.com/icon.png",
+    "token_external_url": "https://my-token.com",
+    "vault_owner": "YOUR_PHANTOM_OR_WALLET_ADDRESS"
+  }'
+```
+
+Required env: `PINATA_JWT` (for IPFS), `PLATFORM_KEYPAIR_PATH` or `PLATFORM_KEYPAIR_BASE64` (for create_mint). The uploaded JSON includes: `name`, `symbol`, `description`, `image`, `external_url`.
+
+---
+
 ### DELETE /projects/{project_id}
 
 Delete a project from local state (on-chain data is not removed).
@@ -539,6 +566,8 @@ So: **Vault = custom address** when you provided `vault_owner`; **Vault = platfo
 
 - The vault is saved in project state (`data/projects.json`) as `vault_owner` when the mint is created.
 - Read it via **GET /projects/{id}**, **GET /projects/{id}/addresses**, or **GET /projects/{id}/vault**.
+
+**Project creator owns the supply:** Pass the creator's Phantom (or wallet) address as `vault_owner` when creating the project so the person adding the project receives the full pre-minted supply; the platform only pays for the mint.
 
 **CLI:** If a project has no `vault_owner` stored (e.g. created earlier), get the address of the keypair that ran create-mint:  
 `startup-cli vault-owner --keypair ~/.config/solana/id.json`  
