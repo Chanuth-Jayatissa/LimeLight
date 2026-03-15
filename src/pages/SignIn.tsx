@@ -1,17 +1,50 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, ArrowRight } from 'lucide-react';
+import { LayoutDashboard, ArrowRight, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
+import { signIn, signOut } from 'aws-amplify/auth';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function SignIn() {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/app');
+    }
+  }, [isAuthenticated, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock authentication
-    navigate('/app');
+    setError('');
+    setIsLoading(true);
+    
+    try {
+      const { isSignedIn, nextStep } = await signIn({
+        username: email,
+        password,
+      });
+
+      if (isSignedIn) {
+        navigate('/app');
+      } else if (nextStep.signInStep === 'CONFIRM_SIGN_UP') {
+        navigate('/signup', { state: { email, step: 'CONFIRM' } });
+      }
+    } catch (err: any) {
+      console.error('Error signing in', err);
+      if (err.name === 'UserAlreadyAuthenticatedException') {
+        navigate('/app');
+      } else {
+        setError(err.message || 'Failed to sign in. Please check your credentials.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -41,6 +74,13 @@ export default function SignIn() {
       >
         <div className="bg-zinc-900 py-8 px-4 shadow sm:rounded-2xl sm:px-10 border border-zinc-800">
           <form className="space-y-6" onSubmit={handleSubmit}>
+            {error && (
+              <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
+                <p className="text-sm text-rose-400">{error}</p>
+              </div>
+            )}
+            
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-zinc-300">
                 Email address
@@ -102,9 +142,12 @@ export default function SignIn() {
             <div>
               <button
                 type="submit"
-                className="flex w-full justify-center items-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-zinc-950 hover:bg-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 transition-colors"
+                disabled={isLoading}
+                className="flex w-full justify-center items-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-zinc-950 hover:bg-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 transition-colors disabled:opacity-50"
               >
-                Sign in <ArrowRight className="w-4 h-4" />
+                {isLoading ? 'Signing in...' : (
+                  <>Sign in <ArrowRight className="w-4 h-4" /></>
+                )}
               </button>
             </div>
           </form>

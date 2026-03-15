@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Link as LinkIcon, FileText, Loader2, CheckCircle2, Wand2, Coins, ExternalLink, Mic, Square } from 'lucide-react';
+import { fetchAuthSession } from 'aws-amplify/auth';
 import StartupCard, { StartupData } from '../components/StartupCard';
 
 const mockUserStartups: StartupData[] = [
@@ -40,6 +41,10 @@ export default function Studio() {
   const [createStep, setCreateStep] = useState<'idle' | 'voice' | 'generating' | 'done'>('idle');
   const [isRecording, setIsRecording] = useState(false);
   const [loadingZones, setLoadingZones] = useState({ text: true, audio: true, video: true });
+  const [voiceStatus, setVoiceStatus] = useState<string>('');
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
   
   const [generatedData, setGeneratedData] = useState<Partial<StartupData>>({});
   
@@ -57,7 +62,153 @@ export default function Studio() {
     }
   }, [createStep, loadingZones]);
 
-  const handleInitialize = () => {
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const result = reader.result as string;
+        const base64 = result.split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = error => reject(error);
+    });
+  };
+
+  const processVoicePipeline = async (file: File, targetUrl: string) => {
+    try {
+      const session = await fetchAuthSession();
+      const token = session.tokens?.idToken?.toString() || session.tokens?.accessToken?.toString();
+
+      setVoiceStatus('Cloning voice from audio...');
+      const base64Audio = await fileToBase64(file);
+      
+      // 1. Create Voice
+      const voiceRes = await fetch('https://gl8wkexgui.execute-api.us-east-2.amazonaws.com/createVoice', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ audio_base64: base64Audio, name: 'Founder' })
+      });
+      
+      if (!voiceRes.ok) {
+        const errorText = await voiceRes.text();
+        console.error('Voice creation API error:', voiceRes.status, errorText);
+        throw new Error(`API error ${voiceRes.status}: ${errorText}`);
+      }
+      
+      let voiceData = await voiceRes.json();
+      console.log('Voice creation response:', voiceData);
+      
+      // Handle API Gateway proxy response format if necessary
+      if (voiceData.body && typeof voiceData.body === 'string') {
+        try {
+          voiceData = JSON.parse(voiceData.body);
+        } catch (e) {
+          console.error('Failed to parse voiceData.body', e);
+        }
+      }
+      
+      if (voiceData.statusCode && voiceData.statusCode !== 200) {
+        throw new Error(`Lambda error ${voiceData.statusCode}: ${JSON.stringify(voiceData)}`);
+      }
+      
+      const voiceId = voiceData.voice_id;
+
+      if (!voiceId) {
+        console.error('Voice creation failed. Response:', voiceData);
+        throw new Error('Failed to create voice');
+      }
+
+      setVoiceStatus('Writing pitch...');
+      // 2. Get Pitch
+      const pitchRes = await fetch('https://gl8wkexgui.execute-api.us-east-2.amazonaws.com/getPitchFromBedrock', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ url: targetUrl })
+      });
+      
+      if (!pitchRes.ok) {
+        const errorText = await pitchRes.text();
+        console.error('Pitch generation API error:', pitchRes.status, errorText);
+        throw new Error(`Pitch API error ${pitchRes.status}: ${errorText}`);
+      }
+      
+      let pitchData = await pitchRes.json();
+      
+      if (pitchData.body && typeof pitchData.body === 'string') {
+        try {
+          pitchData = JSON.parse(pitchData.body);
+        } catch (e) {
+          console.error('Failed to parse pitchData.body', e);
+        }
+      }
+      
+      const pitchText = pitchData.text || pitchData.pitch;
+
+      setVoiceStatus('Synthesizing audio...');
+      // 3. Generate TTS
+      const ttsRes = await fetch('https://ceexnffhr5wbwd4gny4hzo65k40zgutx.lambda-url.us-east-2.on.aws/', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ text: pitchText, voice_id: voiceId, name: 'Founder' })
+      });
+      
+      if (!ttsRes.ok) {
+        const errorText = await ttsRes.text();
+        console.error('TTS generation API error:', ttsRes.status, errorText);
+        throw new Error(`TTS API error ${ttsRes.status}: ${errorText}`);
+      }
+      
+      let ttsData = await ttsRes.json();
+      
+      if (ttsData.body && typeof ttsData.body === 'string') {
+        try {
+          ttsData = JSON.parse(ttsData.body);
+        } catch (e) {
+          console.error('Failed to parse ttsData.body', e);
+        }
+      }
+      
+      const audioUrl = ttsData.s3_url || ttsData.audio_url;
+
+      setVoiceStatus('Cleaning up...');
+      // 4. Delete Voice
+      await fetch('https://gl8wkexgui.execute-api.us-east-2.amazonaws.com/deleteVoice', {
+        method: 'DELETE',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ voice_id: voiceId })
+      });
+
+      setVoiceStatus('');
+      return audioUrl;
+    } catch (error: any) {
+      console.error('Voice pipeline error:', error);
+      
+      let errorMessage = 'Failed to generate voice pitch.';
+      if (error.message === 'Failed to fetch') {
+        errorMessage = 'Network error (Failed to fetch). This usually means CORS is not enabled on your AWS API Gateway for the voice endpoints, or the API URL is missing a stage name (like /prod).';
+      } else {
+        errorMessage = error.message || errorMessage;
+      }
+      
+      setVoiceStatus(errorMessage);
+      return null;
+    }
+  };
+
+  const handleInitialize = async () => {
     if (!urlInput) return;
     setCreateStep('voice');
     setLoadingZones({ text: true, audio: true, video: true });
@@ -89,18 +240,82 @@ export default function Studio() {
       ]
     });
 
-    // Zone 1: Text (Starts immediately in background, takes ~3s)
-    setTimeout(() => {
+    try {
+      const session = await fetchAuthSession();
+      const token = session.tokens?.idToken?.toString() || session.tokens?.accessToken?.toString();
+
+      const response = await fetch('https://gl8wkexgui.execute-api.us-east-2.amazonaws.com/scrapeURL', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ url: urlInput })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Scrape URL API error:', response.status, errorText);
+        throw new Error(`API error ${response.status}: ${errorText}`);
+      }
+
+      const responseText = await response.text();
+      let data: any = {};
+      
+      try {
+        data = responseText ? JSON.parse(responseText) : {};
+      } catch (e) {
+        console.warn('Response was not valid JSON, using raw text');
+        data = { summary: responseText };
+      }
+      
       setLoadingZones(prev => ({ ...prev, text: false }));
       setGeneratedData(prev => ({
         ...prev,
-        name: 'AutoScale AI',
-        logo: 'A',
-        hook: 'Elastic compute scaling for any workload.',
-        problem: 'Cloud costs are spiraling out of control due to inefficient resource allocation.',
-        solution: 'An AI-driven orchestrator that predicts load and scales infrastructure in real-time, saving 40% on AWS bills.',
+        ...data,
+        name: data.context_file?.project_name || data.name || 'Unknown Startup',
+        logo: (data.context_file?.project_name || data.name || 'S').charAt(0),
+        hook: data.one_sentence_summary || data.hook || data.summary || 'No hook generated.',
+        problem: data.problem || 'Problem not specified.',
+        solution: data.solution || 'Solution not specified.',
+        radarData: data.projected_growth ? [
+          { subject: 'Team', score: (data.projected_growth.team || 0) * 20 },
+          { subject: 'Tech', score: (data.projected_growth.tech || 0) * 20 },
+          { subject: 'Market', score: (data.projected_growth.market || 0) * 20 },
+          { subject: 'Traction', score: (data.projected_growth.traction || 0) * 20 },
+        ] : prev.radarData,
+        lineData: data.user_growth_projection_12_months ? [
+          { month: 'M1', users: data.user_growth_projection_12_months.month_1 || 0 },
+          { month: 'M2', users: data.user_growth_projection_12_months.month_2 || 0 },
+          { month: 'M3', users: data.user_growth_projection_12_months.month_3 || 0 },
+          { month: 'M4', users: data.user_growth_projection_12_months.month_4 || 0 },
+          { month: 'M5', users: data.user_growth_projection_12_months.month_5 || 0 },
+          { month: 'M6', users: data.user_growth_projection_12_months.month_6 || 0 },
+          { month: 'M7', users: data.user_growth_projection_12_months.month_7 || 0 },
+          { month: 'M8', users: data.user_growth_projection_12_months.month_8 || 0 },
+          { month: 'M9', users: data.user_growth_projection_12_months.month_9 || 0 },
+          { month: 'M10', users: data.user_growth_projection_12_months.month_10 || 0 },
+          { month: 'M11', users: data.user_growth_projection_12_months.month_11 || 0 },
+          { month: 'M12', users: data.user_growth_projection_12_months.month_12 || 0 },
+        ] : prev.lineData
       }));
-    }, 3000);
+    } catch (error: any) {
+      console.error('Error fetching startup summary:', error);
+      
+      let errorMessage = 'Failed to generate summary from the provided URL.';
+      if (error.message === 'Failed to fetch') {
+        errorMessage = 'Network error (Failed to fetch). This usually means CORS is not enabled on your AWS API Gateway, or the API URL is missing a stage name (like /prod).';
+      } else {
+        errorMessage = error.message || errorMessage;
+      }
+
+      setLoadingZones(prev => ({ ...prev, text: false }));
+      setGeneratedData(prev => ({
+        ...prev,
+        name: 'Connection Error',
+        hook: errorMessage,
+      }));
+    }
 
     // Zone 3: Video (Starts immediately in background, takes ~6s)
     setTimeout(() => {
@@ -112,26 +327,83 @@ export default function Studio() {
     }, 6000);
   };
 
-  const toggleRecording = () => {
-    if (isRecording) {
-      setIsRecording(false);
-      handleGenerate();
-    } else {
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const file = new File([audioBlob], 'recording.webm', { type: 'audio/webm' });
+        setAudioFile(file);
+        // We must call handleGenerate here because state updates are async
+        handleGenerate(file);
+      };
+
+      mediaRecorder.start();
       setIsRecording(true);
+    } catch (error) {
+      console.error('Error accessing microphone:', error);
+      alert('Could not access microphone. Please ensure permissions are granted.');
     }
   };
 
-  const handleGenerate = () => {
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+    }
+  };
+
+  const toggleRecording = () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  };
+
+  const handleGenerate = async (recordedFile?: File) => {
     setCreateStep('generating');
     
-    // Zone 2: Audio (Starts after recording stops, takes ~4s)
-    setTimeout(() => {
+    const fileToProcess = recordedFile || audioFile;
+    
+    if (!fileToProcess) {
+      // Fallback if no audio recorded
+      setTimeout(() => {
+        setLoadingZones(prev => ({ ...prev, audio: false }));
+        setGeneratedData(prev => ({
+          ...prev,
+          audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
+        }));
+      }, 4000);
+    } else {
+      // Process the actual voice pipeline
+      const generatedAudioUrl = await processVoicePipeline(fileToProcess, urlInput);
+      
       setLoadingZones(prev => ({ ...prev, audio: false }));
-      setGeneratedData(prev => ({
-        ...prev,
-        audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
-      }));
-    }, 4000);
+      if (generatedAudioUrl) {
+        setGeneratedData(prev => ({
+          ...prev,
+          audioUrl: generatedAudioUrl,
+        }));
+      } else {
+        // Fallback on error
+        setGeneratedData(prev => ({
+          ...prev,
+          audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
+        }));
+      }
+    }
   };
 
   const handleMint = async () => {
@@ -325,7 +597,7 @@ export default function Studio() {
                   {loadingZones.audio ? <Loader2 className="w-5 h-5 text-emerald-400 animate-spin" /> : <CheckCircle2 className="w-5 h-5 text-emerald-400" />}
                   <div>
                     <p className="text-sm font-medium text-white">Audio Pitch</p>
-                    <p className="text-xs text-zinc-400">{loadingZones.audio ? 'Cloning Voice & Generating...' : 'Audio Ready'}</p>
+                    <p className="text-xs text-zinc-400">{loadingZones.audio ? (voiceStatus || 'Cloning Voice & Generating...') : 'Audio Ready'}</p>
                   </div>
                 </div>
                 <div className={`p-4 rounded-xl border flex items-center gap-3 transition-colors ${loadingZones.video ? 'bg-zinc-900 border-zinc-800' : 'bg-emerald-500/10 border-emerald-500/30'}`}>

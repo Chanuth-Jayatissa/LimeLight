@@ -43,28 +43,37 @@ export default function StartupCard({ startup }: { startup: StartupData; key?: R
 
   const toggleAudio = (e?: React.MouseEvent) => {
     e?.stopPropagation();
-    if (audioRef.current && videoRef.current) {
-      if (isPlaying) {
-        audioRef.current.pause();
-        videoRef.current.pause();
-        setIsPlaying(false);
-      } else {
-        setIsPlaying(true);
+    
+    if (isPlaying) {
+      if (audioRef.current) audioRef.current.pause();
+      if (videoRef.current) videoRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      setIsPlaying(true);
+      let hasMedia = false;
+      
+      if (audioRef.current && startup.audioUrl) {
+        hasMedia = true;
         const audioPromise = audioRef.current.play();
-        const videoPromise = videoRef.current.play();
-        
         if (audioPromise !== undefined) {
           audioPromise.catch(error => {
             console.error("Audio playback failed:", error);
-            setIsPlaying(false);
           });
         }
+      }
+      
+      if (videoRef.current && startup.videoUrl) {
+        hasMedia = true;
+        const videoPromise = videoRef.current.play();
         if (videoPromise !== undefined) {
           videoPromise.catch(error => {
             console.error("Video playback failed:", error);
-            setIsPlaying(false);
           });
         }
+      }
+      
+      if (!hasMedia) {
+        setIsPlaying(false);
       }
     }
   };
