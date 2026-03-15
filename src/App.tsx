@@ -1,11 +1,11 @@
 import { BrowserRouter, Routes, Route, Link, Outlet, Navigate, useLocation } from 'react-router-dom';
-import Portfolio from './pages/Portfolio';
 import Profile from './pages/Profile';
-import Feed from './pages/Feed';
+import Discover from './pages/Discover';
+import Studio from './pages/Studio';
 import Landing from './pages/Landing';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
-import { Wallet, Users, LayoutDashboard, LogOut } from 'lucide-react';
+import { Wallet, Users, Compass, LogOut, Wand2 } from 'lucide-react';
 
 function Navigation() {
   const location = useLocation();
@@ -21,25 +21,25 @@ function Navigation() {
       <Link 
         to="/app" 
         className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all duration-300 ${
-          isActive('/app') 
+          isActive('/app') && location.pathname === '/app'
             ? 'bg-white/10 text-white shadow-sm' 
             : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/5'
         }`}
       >
-        <LayoutDashboard className="w-4 h-4" />
-        <span className="text-sm font-medium">Feed</span>
+        <Compass className="w-4 h-4" />
+        <span className="text-sm font-medium">Discover</span>
       </Link>
-      
+
       <Link 
-        to="/app/portfolio" 
+        to="/app/studio" 
         className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all duration-300 ${
-          isActive('/app/portfolio') 
+          isActive('/app/studio') 
             ? 'bg-white/10 text-white shadow-sm' 
             : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/5'
         }`}
       >
-        <Wallet className="w-4 h-4" />
-        <span className="text-sm font-medium">Portfolio</span>
+        <Wand2 className="w-4 h-4" />
+        <span className="text-sm font-medium">Studio</span>
       </Link>
       
       <Link 
@@ -88,8 +88,8 @@ export default function App() {
         <Route path="/login" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/app" element={<Layout />}>
-          <Route index element={<Feed />} />
-          <Route path="portfolio" element={<Portfolio />} />
+          <Route index element={<Discover />} />
+          <Route path="studio" element={<Studio />} />
           <Route path="profile/:id" element={<Profile />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

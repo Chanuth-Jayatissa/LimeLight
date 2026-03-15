@@ -13,6 +13,7 @@ const mockStartups: StartupData[] = [
     solution: 'A decentralized network allowing anyone to monetize their idle GPU power for AI training tasks, reducing costs by 80%.',
     videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4',
     audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+    websiteUrl: 'https://example.com/nexus',
     tokenPrice: 0.0042,
     marketCap: 1250000,
     radarData: [
@@ -47,6 +48,7 @@ const mockStartups: StartupData[] = [
     solution: 'Aura uses zk-SNARKs to allow users to prove collateralization without revealing their total assets or transaction history.',
     videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
     audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
+    websiteUrl: 'https://example.com/aura',
     tokenPrice: 0.0185,
     marketCap: 4500000,
     radarData: [
@@ -81,6 +83,7 @@ const mockStartups: StartupData[] = [
     solution: 'A highly optimized Solana program that calculates rigid-body physics natively on-chain, enabling trustless multiplayer.',
     videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
     audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
+    websiteUrl: 'https://example.com/voxel',
     tokenPrice: 0.0021,
     marketCap: 850000,
     radarData: [
@@ -115,6 +118,7 @@ const mockStartups: StartupData[] = [
     solution: 'Deploy custom AI agents that execute trades automatically based on real-time sentiment shifts across Twitter and Discord.',
     videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4',
     audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3',
+    websiteUrl: 'https://example.com/synthetix',
     tokenPrice: 0.0540,
     marketCap: 12400000,
     radarData: [
@@ -149,6 +153,7 @@ const mockStartups: StartupData[] = [
     solution: 'A novel consensus mechanism that verifies cross-chain state instantly, eliminating the need for traditional bridges.',
     videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
     audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3',
+    websiteUrl: 'https://example.com/omnichain',
     tokenPrice: 0.0110,
     marketCap: 3200000,
     radarData: [
@@ -183,6 +188,7 @@ const mockStartups: StartupData[] = [
     solution: 'A secure, encrypted vault where users store their DNA data and earn tokens when researchers access it for studies.',
     videoUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
     audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3',
+    websiteUrl: 'https://example.com/biosync',
     tokenPrice: 0.0085,
     marketCap: 2100000,
     radarData: [
@@ -208,7 +214,7 @@ const mockStartups: StartupData[] = [
   }
 ];
 
-export default function Feed() {
+export default function Discover() {
   const [columns, setColumns] = useState(3);
 
   useEffect(() => {

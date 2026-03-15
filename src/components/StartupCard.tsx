@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Play, Pause, Activity, CheckCircle2, ChevronDown, ChevronUp, Quote, Sparkles } from 'lucide-react';
+import { Play, Pause, Activity, CheckCircle2, ChevronDown, ChevronUp, Quote, Sparkles, ExternalLink } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer, LineChart, Line, XAxis, Tooltip } from 'recharts';
 
 export interface StartupData {
@@ -13,6 +13,7 @@ export interface StartupData {
   solution: string;
   videoUrl: string;
   audioUrl: string;
+  websiteUrl: string;
   tokenPrice: number;
   marketCap: number;
   radarData: { subject: string; score: number }[];
@@ -194,16 +195,26 @@ export default function StartupCard({ startup }: { startup: StartupData; key?: R
           </div>
         </div>
 
-        <button 
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="w-full py-3 flex items-center justify-center gap-2 text-zinc-400 hover:text-white hover:bg-zinc-800/50 rounded-xl transition-colors text-sm font-medium border border-transparent hover:border-zinc-700/50 mt-2"
-        >
-          {isExpanded ? (
-            <>Hide Analysis & Investment <ChevronUp className="w-4 h-4" /></>
-          ) : (
-            <>View Analysis & Invest <ChevronDown className="w-4 h-4" /></>
-          )}
-        </button>
+        <div className="flex flex-col sm:flex-row gap-3 mt-2">
+          <a 
+            href={startup.websiteUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 py-3 flex items-center justify-center gap-2 bg-zinc-800/40 hover:bg-zinc-700/50 text-zinc-200 hover:text-white rounded-xl transition-colors text-sm font-medium border border-zinc-700/50"
+          >
+            Visit Website <ExternalLink className="w-4 h-4" />
+          </a>
+          <button 
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="flex-1 py-3 flex items-center justify-center gap-2 text-zinc-400 hover:text-white hover:bg-zinc-800/50 rounded-xl transition-colors text-sm font-medium border border-transparent hover:border-zinc-700/50"
+          >
+            {isExpanded ? (
+              <>Hide Analysis & Invest <ChevronUp className="w-4 h-4" /></>
+            ) : (
+              <>View Analysis & Invest <ChevronDown className="w-4 h-4" /></>
+            )}
+          </button>
+        </div>
 
         {isExpanded && (
           <div className="space-y-10 flex-1 flex flex-col animate-in fade-in slide-in-from-top-4 duration-500">
