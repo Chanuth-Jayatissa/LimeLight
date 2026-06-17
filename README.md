@@ -1,20 +1,61 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# LimeLight
 
-# Run and deploy your AI Studio app
+LimeLight is a startup discovery and investing platform prototype. It gives users a discovery feed of startups, founder/profile pages, and a studio workflow for creating startup pitch cards from a URL, voice input, generated pitch content, and token-style launch metadata.
 
-This contains everything you need to run your app locally.
+## Features
 
-View your app in AI Studio: https://ai.studio/apps/38d33c71-a597-4c4c-a6be-2b2d96fa8f5b
+- Public landing page for a startup investing platform.
+- Protected app routes for discovery, studio, and profile pages.
+- Startup discovery feed with mock startup market, traction, and radar data.
+- Studio dashboard for managing generated startup cards.
+- Create flow that can scrape a URL, process a voice recording, and generate pitch/audio metadata through API endpoints.
+- Local persistence for user-created startup cards.
+- AWS Amplify/Cognito integration points for authenticated API calls.
 
-## Run Locally
+## Tech Stack
 
-**Prerequisites:**  Node.js
+- React and TypeScript
+- Vite
+- Tailwind CSS
+- AWS Amplify Auth
+- Lucide React and Motion
+- Express-related server dependencies for API integration work
 
+## Project Structure
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+- src/App.tsx - route shell, auth guard, and app navigation
+- src/pages/Landing.tsx - public landing page
+- src/pages/Discover.tsx - startup discovery masonry feed
+- src/pages/Studio.tsx - startup creation and management workflow
+- src/pages/Profile.tsx - founder/startup profile view
+- src/contexts/AuthContext.tsx - auth state handling
+- src/components/StartupCard.tsx - reusable startup card UI
+
+## Getting Started
+
+Install dependencies and start the frontend:
+
+~~~bash
+npm install
+npm run dev
+~~~
+
+Optional Cognito configuration can be provided through Vite environment variables:
+
+~~~bash
+VITE_USER_POOL_ID=your_cognito_user_pool_id
+VITE_APP_CLIENT_ID=your_cognito_app_client_id
+~~~
+
+## Useful Commands
+
+~~~bash
+npm run dev
+npm run build
+npm run preview
+npm run lint
+~~~
+
+## Status
+
+Portfolio prototype. The UI and product flow are present, with mocked startup data and integration points for auth, URL analysis, voice generation, and token launch workflows.
